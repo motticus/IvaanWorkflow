@@ -1,0 +1,11 @@
+[{ "color" : "#4f99b4",
+  "key" : "Value View",
+  "values" : [ { 
+        "label" : "true",
+        "value" : "749"
+      },
+      { "label" : "false",
+        "value" : "1469"
+      }
+    ]
+}]

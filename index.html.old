@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html xmlns:xlink="http://www.w3.org/1999/xlink">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8"/>
+    <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+    <script src="nv.d3.min.js" charset="utf-8"></script>
+    <link href="nv.d3.css" rel="stylesheet">
+    <script src="graph.js"></script>
+    <script src="graph1.js"></script>
+    <script src="//code.jquery.com/jquery-2.1.1.min.js"></script>
+    <style>
+      #chart1 svg {
+        height: 600px;
+      }
+      #chart2 svg {
+        height: 600px;
+      }
+      html,body {height:100%;width:100%;}
+ 
+      .node circle {
+        cursor: pointer;
+        fill: #fff;
+        stroke: steelblue;
+        stroke-width: 1.5px;
+      }
+
+      .node text {
+        font-size: 11px;
+      }
+
+      path.link {
+        fill: none;
+        stroke: #ccc;
+        stroke-width: 1.5px;
+      }
+      
+    </style>
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap-theme.min.css">
+
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+    <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+    
+
+  </head>
+  <body>
+    <nav class="navbar navbar-default" role="navigation">
+      <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="#">IVAaN Workflow</a>
+    </div>
+
+    <!-- Collect the nav links, forms, and other content for toggling -->
+    <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+      <ul class="nav navbar-nav navbar-right">
+        <li><a href="#" data-toggle="modal" data-target="#globalModal">Global View</a></li>
+        <li><a href="#" data-toggle="modal" data-target="#subsetModal">Selected Subset</a></li>
+      </ul>
+    </div><!-- /.navbar-collapse -->
+  </div><!-- /.container-fluid -->
+  <!-- Modal -->
+<div class="modal fade" id="globalModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+  <div class="modal-dialog" id="testModal" style="width:90%; height:100%;">
+    <div class="modal-content" id="returnGlobalModal" style="width:90%; height:95%;">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+        <h4 class="modal-title" id="myModalLabel">Global View</h4>
+      </div>
+      <div class="modal-body">
+    <div id="body" style="width:100%; height:100%;"></div>
+    <!--<div id="console"></div> -->
+    <script type="text/javascript">
+
+var m = [20, 120, 20, 120],
+    w = window.innerWidth * .9 - m[1] - m[3],
+    h = window.innerHeight * .9 - m[0] - m[2],
+    i = 0,
+    root;
+var tree = d3.layout.tree()
+    .size([h, w]);
+
+var diagonal = d3.svg.diagonal()
+    .projection(function(d) { return [d.y, d.x]; });
+
+var vis = d3.select("#body").append("svg:svg")
+    .attr("width", w + m[1] + m[3])
+    .attr("height", h + m[0] + m[2])
+  .append("svg:g")
+    .attr("transform", "translate(" + m[3] + "," + m[0] + ")");
+
+serviceUrl = "service/buildMainset"
+  $.ajax({
+	  url: serviceUrl,
+	  data: {
+	  },
+	  dataType: "json",
+	  success: function (response) {
+		  drawMainTree(response.result);
+	  }
+  });
+	      
+function drawMainTree(data) {
+	  root = data;
+	  root.x0 = h / 2;
+	  root.y0 = 0;
+		
+	  function toggleAll(d) {
+	    if (d.children) {
+	      d.children.forEach(toggleAll);
+	      toggle(d);
+	    }
+	  }
+	
+	  // Initialize the display to show a few nodes.
+	  root.children.forEach(toggleAll);
+	//  toggle(root.children[1]);
+	//  toggle(root.children[1].children[2]);
+	//  toggle(root.children[9]);
+	//  toggle(root.children[9].children[0]);
+	
+	  update(root);
+}
+
+function findChildren(data, type) {
+	var id = data.id;
+	var circle = vis.selectAll("circle").filter(function (d,i) { return d.id === id ? this : null; });
+	data.selected = type;
+	if (data.children) {
+		for (var i = 0, len = data.children.length; i < len; i++) {
+           findChildren(data.children[i], type);
+        }
+        if (type === "no") {
+			circle.attr("style", "fill:#fff");
+		} else {
+            circle.attr("style", "fill:lightred;");
+	    }
+	} else if (data._children) {
+		for (var i = 0, len = data._children.length; i < len; i++) {
+           findChildren(data._children[i], type);
+        }
+        if (type === "no") {
+			circle.attr("style", "fill:lightsteelblue");
+		} else {
+            circle.attr("style", "fill:red;");
+	    }
+	} else {
+	    console.log(data);	
+	}
+}
+
+function update(source) {
+  var duration = d3.event && d3.event.altKey ? 5000 : 500;
+
+  // Compute the new tree layout.
+  var nodes = tree.nodes(root).reverse();
+
+  // Normalize for fixed-depth.
+  nodes.forEach(function(d) { d.y = d.depth * 180; });
+
+  // Update the nodes…
+  var node = vis.selectAll("g.node")
+      .data(nodes, function(d) { return d.id || (d.id = ++i); });
+
+  // Enter any new nodes at the parent's previous position.
+  var nodeEnter = node.enter().append("svg:g")
+      .attr("class", "node")
+      .attr("transform", function(d) { return "translate(" + source.y0 + "," + source.x0 + ")"; })
+      .on("click", function(d) { 
+			  toggle(d); 
+		      update(d); 
+	   })
+	  .on("contextmenu", function(d) {
+		  d3.event.preventDefault();
+		  change = "no";
+		  if (d.selected === "no") {
+			  change = "yes";
+		  }
+		  findChildren(d, change);
+	   })
+      .on("mouseover", onMouseOver);
+      
+  nodeEnter.append("svg:a") 
+  	  .attr("xlink:href", function(d) { if (d.type === "file") {
+										return "javascript:Link(\"" + d.file + "\")";
+										//return "http://viz1.ncifcrf.gov:8080/IvaanApps/dev/xmlupload/tcga.html?filename='" + d.file + "'";
+		                                //return encodeURIComponent(uri);
+		                                }})
+  	  .attr("target", "_blank")
+  .append("svg:circle")
+      .attr("r", 1e-6)
+      .style("fill", function(d) { return d._children ? "lightsteelblue" : "#fff"; });
+  nodeEnter.append("svg:text")
+      .attr("x", function(d) { return d.children || d._children ? -10 : 10; })
+      .attr("dy", ".35em")
+      .attr("text-anchor", function(d) { return d.children || d._children ? "end" : "start"; })
+      .text(function(d) { 
+		    return d.name;
+		})
+      .style("fill-opacity", 1e-6);
+
+  // Transition nodes to their new position.
+  var nodeUpdate = node.transition()
+      .duration(duration)
+      .attr("transform", function(d) { return "translate(" + d.y + "," + d.x + ")"; });
+
+  nodeUpdate.select("circle")
+      .attr("r", 4.5)
+      .style("fill", function(d) { 
+		  if (d.selected === "no") {
+		      return d._children ? "lightsteelblue" : "#fff"; 
+		  } else {
+			  return d._children ? "red" : "lightred"; 
+		  }
+	  });
+
+  nodeUpdate.select("text")
+      .style("fill-opacity", 1);
+
+  // Transition exiting nodes to the parent's new position.
+  var nodeExit = node.exit().transition()
+      .duration(duration)
+      .attr("transform", function(d) { return "translate(" + source.y + "," + source.x + ")"; })
+      .remove();
+
+  nodeExit.select("circle")
+      .attr("r", 1e-6);
+
+  nodeExit.select("text")
+      .style("fill-opacity", 1e-6);
+
+  // Update the links…
+  var link = vis.selectAll("path.link")
+      .data(tree.links(nodes), function(d) { return d.target.id; });
+
+  // Enter any new links at the parent's previous position.
+  link.enter().insert("svg:path", "g")
+      .attr("class", "link")
+      .attr("d", function(d) {
+        var o = {x: source.x0, y: source.y0};
+        return diagonal({source: o, target: o});
+      })
+    .transition()
+      .duration(duration)
+      .attr("d", diagonal);
+
+  // Transition links to their new position.
+  link.transition()
+      .duration(duration)
+      .attr("d", diagonal);
+
+  // Transition exiting nodes to the parent's new position.
+  link.exit().transition()
+      .duration(duration)
+      .attr("d", function(d) {
+        var o = {x: source.x, y: source.y};
+        return diagonal({source: o, target: o});
+      })
+      .remove();
+
+  // Stash the old positions for transition.
+  nodes.forEach(function(d) {
+    d.x0 = d.x;
+    d.y0 = d.y;
+  });
+  
+  function onMouseOver(d)
+	{
+		var message = "<p><strong>Name</strong>: " + d.name + ", " + d.file + ", " + d.coll + "</p>";
+		
+		
+		//document.getElementById("console").innerHTML = message;
+	}
+}
+
+function Link(name) {
+	var win = window.open("http://viz1.ncifcrf.gov:8080/IvaanApps/dev/xmlupload/tcga.html?filename=" + encodeURIComponent(name), '_blank');
+    win.focus();
+}
+
+// Toggle children.
+function toggle(d) {
+	
+	if ( !(d.children || d._children) )
+		return;
+		
+  if (d.children) {
+    d._children = d.children;
+    d.children = null;
+  } else {
+    d.children = d._children;
+    d._children = null;
+  }
+}
+    alert($("#testModal").height());
+    </script>
+      </div>
+    </div>
+  </div>
+</div>
+  <!-- Modal -->
+<div class="modal fade" id="subsetModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+  <div class="modal-dialog" style="width:90%; height:90%;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+        <h4 class="modal-title" id="myModalLabel">Selected Subset View</h4>
+      </div>
+      <div class="modal-body">
+        subset
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary">Save changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+</nav>
+    <div style="width:100%; height:90%;">
+      <div style="float:left; width:50%; height:100%;"> 
+        <div id="chart1">
+          <svg></svg>
+        </div>
+      </div>
+      <div style="float:left; width:50%; height:100%;">
+        <div id="chart2">
+          <svg></svg>
+        </div>
+      </div>
+    </div>
+        <script type="text/javascript">
+			alert("OHHAI");
+      $(window).load(function(){
+          $('#globalModal').modal('show');
+      });
+    </script>
+  </body>
+</html>

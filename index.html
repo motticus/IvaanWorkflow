@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html xmlns:xlink="http://www.w3.org/1999/xlink">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8"/>
+    <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+    <script src="nv.d3.min.js" charset="utf-8"></script>
+    <link href="nv.d3.css" rel="stylesheet">
+    <link rel="stylesheet" href="//code.jquery.com/ui/1.11.0/themes/smoothness/jquery-ui.css">
+    <script src="//code.jquery.com/jquery-2.1.1.min.js"></script>
+    <script src="//code.jquery.com/ui/1.11.0/jquery-ui.js"></script>
+    <style>#slider-range { margin-left: 375px;margin-right:375px; }	</style>
+    <style>#slider-range2 { margin-left: 375px;margin-right:375px; }	</style>
+    <style>
+      html,body {height:100%;width:100%;}
+ 
+      .node circle {
+        cursor: pointer;
+        fill: #fff;
+        stroke: steelblue;
+        stroke-width: 1.5px;
+      }
+
+      .node text {
+        font-size: 11px;
+        font-size: 11px;
+      }
+
+      path.link {
+        fill: none;
+        stroke: #ccc;
+        stroke-width: 1.5px;
+      }
+      
+      #content {
+  position: absolute;
+  top: 150px;
+  bottom: 0;
+  width: 100%;
+  overflow-y: auto;
+}
+      
+    </style>
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="bootstrap/css/bootstrap.min.css">
+
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="bootstrap/css/bootstrap-theme.min.css">
+
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="bootstrap/js/bootstrap.min.js"></script>
+    <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+    <script src="keyword.js" charset="utf-8"></script>
+    <script src="value.js" charset="utf-8"></script>
+        <script src="subset.js" charset="utf-8"></script>
+  </head>
+  <body>
+    <nav class="navbar navbar-default" role="navigation">
+      <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="#">IVAaN Workflow</a>
+    </div>
+  </div><!-- /.container-fluid -->
+  </nav>
+  <!-- Modal -->
+  <ul id="myTab" class="nav nav-tabs" role="tablist">
+      <li class="active">
+		 <a href="#global" role="tab" data-toggle="tab">Global View</a>
+      </li>
+      <li> 
+         <a href="#keyword" role="tab" data-toggle="tab">Keyword View</a>
+      </li>
+      <li>
+		 <a href="#value" role="tab" data-toggle="tab">Value View</a>
+      </li>
+      <li>
+		 <a href="#subset" role="tab" data-toggle="tab">Selected Subset</a>
+      </li>
+      <li>
+		 <a href="#dataPoint" role="tab" data-toggle="tab">Data Point</a>
+      </li>
+  </ul>
+<div class="tab-content" id="content">
+  <div class="tab-pane active" id="global">
+	<button type="button" class="btn btn-default btn-lg" onclick="submitGlobal()">
+      Submit
+    </button>
+	<button type="button" id="reviewstatebutton" data-html="true" class="btn btn-default btn-lg popover-children" data-toggle="popover" data-content="">
+      Load State
+    </button>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+    <button type="button" class="btn btn-default btn-lg" id="globalHelp" data-html="true" data-content="Left Click on node to view lower levels of graph<br>Right Click on node to use node and children.<br>Click Submit to execute search for Keywords" >Help</button>
+    <div id="body" style="width:100%; height:100%;"></div>
+    <!--<div id="console"></div> -->
+
+    <script type="text/javascript">
+var type = "";
+var fileListArr = "";
+var mainKeyword = "";
+
+var returnValue = "";
+var tmpKeywordFileNumberSortByName = "";
+var tmpKeywordFileNumberSortByValue = "";
+var tmpKeywordListingSortByName = "";
+var tmpKeywordListingSortByValue = "";
+var root;
+function MainGraph(coll) {
+(function() {
+var m = [20, 120, 20, 120],
+    w = window.innerWidth * .85 - m[1] - m[3],
+    h = window.innerHeight * .85 - m[0] - m[2],
+    i = 0;
+var tree = d3.layout.tree()
+    .size([h, w]);
+
+var diagonal = d3.svg.diagonal()
+    .projection(function(d) { return [d.y, d.x]; });
+
+var vis = d3.select("#body").append("svg:svg")
+    .attr("width", w + m[1] + m[3])
+    .attr("height", h + m[0] + m[2])
+  .append("svg:g")
+    .attr("transform", "translate(" + m[3] + "," + m[0] + ")");
+serviceUrl = "service/buildMainset"
+  $.ajax({
+	  url: serviceUrl,
+	  data: {
+		  collection: coll
+	  },
+	  dataType: "json",
+	  success: function (response) {
+		  drawMainTree(response.result);
+	  }
+  });
+	      
+function drawMainTree(data) {
+	  root = data;
+	  root.x0 = h / 2;
+	  root.y0 = 0;
+		
+	  function toggleAll(d) {
+	    if (d.children) {
+	      d.children.forEach(toggleAll);
+	      toggle(d);
+	    }
+	  }
+	
+	  // Initialize the display to show a few nodes.
+	  root.children.forEach(toggleAll);
+	//  toggle(root.children[1]);
+	//  toggle(root.children[1].children[2]);
+	//  toggle(root.children[9]);
+	//  toggle(root.children[9].children[0]);
+	
+	  update(root);
+}
+
+function findChildren(data, type) {
+	var id = data.id;
+	var circle = vis.selectAll("circle").filter(function (d,i) { return d.id === id ? this : null; });
+	data.selected = type;
+	if (data.children) {
+		for (var i = 0, len = data.children.length; i < len; i++) {
+           findChildren(data.children[i], type);
+        }
+        if (type === "no") {
+			circle.attr("style", "fill:#fff");
+		} else {
+            circle.attr("style", "fill:lightred;");
+	    }
+	} else if (data._children) {
+		for (var i = 0, len = data._children.length; i < len; i++) {
+           findChildren(data._children[i], type);
+        }
+        if (type === "no") {
+			circle.attr("style", "fill:lightsteelblue");
+		} else {
+            circle.attr("style", "fill:red;");
+	    }
+	} else {
+		if (type === "no") {
+			circle.attr("style", "fill:#fff");
+		} else {
+            circle.attr("style", "fill:lightred;");
+	    }
+	}
+}
+
+function update(source) {
+  var duration = d3.event && d3.event.altKey ? 5000 : 500;
+
+  // Compute the new tree layout.
+  var nodes = tree.nodes(root).reverse();
+
+  // Normalize for fixed-depth.
+  nodes.forEach(function(d) { d.y = d.depth * 180; });
+
+  // Update the nodes…
+  var node = vis.selectAll("g.node")
+      .data(nodes, function(d) { return d.id || (d.id = ++i); });
+
+  // Enter any new nodes at the parent's previous position.
+  var nodeEnter = node.enter().append("svg:g")
+      .attr("class", "node")
+      .attr("transform", function(d) { return "translate(" + source.y0 + "," + source.x0 + ")"; })
+      .on("click", function(d) { 
+			  toggle(d); 
+		      update(d); 
+	   })
+	  .on("contextmenu", function(d) {
+		  d3.event.preventDefault();
+		  change = "no";
+		  if (d.selected === "no") {
+			  change = "yes";
+		  }
+		  findChildren(d, change);
+	   })
+      .on("mouseover", onMouseOver);
+      
+  nodeEnter.append("svg:a") 
+  .append("svg:circle")
+      .attr("r", 1e-6)
+      .style("fill", function(d) { return d._children ? "lightsteelblue" : "#fff"; });
+  nodeEnter.append("svg:text")
+      .attr("x", function(d) { return d.children || d._children ? -10 : 10; })
+      .attr("dy", ".35em")
+      .attr("text-anchor", function(d) { return d.children || d._children ? "end" : "start"; })
+      .text(function(d) { 
+		    return d.name;
+		})
+      .style("fill-opacity", 1e-6);
+
+  // Transition nodes to their new position.
+  var nodeUpdate = node.transition()
+      .duration(duration)
+      .attr("transform", function(d) { return "translate(" + d.y + "," + d.x + ")"; });
+
+  nodeUpdate.select("circle")
+      .attr("r", 4.5)
+      .style("fill", function(d) { 
+		  if (d.selected === "no") {
+		      return d._children ? "lightsteelblue" : "#fff"; 
+		  } else {
+			  return d._children ? "red" : "lightred"; 
+		  }
+	  });
+
+  nodeUpdate.select("text")
+      .style("fill-opacity", 1);
+
+  // Transition exiting nodes to the parent's new position.
+  var nodeExit = node.exit().transition()
+      .duration(duration)
+      .attr("transform", function(d) { return "translate(" + source.y + "," + source.x + ")"; })
+      .remove();
+
+  nodeExit.select("circle")
+      .attr("r", 1e-6);
+
+  nodeExit.select("text")
+      .style("fill-opacity", 1e-6);
+
+  // Update the links…
+  var link = vis.selectAll("path.link")
+      .data(tree.links(nodes), function(d) { return d.target.id; });
+
+  // Enter any new links at the parent's previous position.
+  link.enter().insert("svg:path", "g")
+      .attr("class", "link")
+      .attr("d", function(d) {
+        var o = {x: source.x0, y: source.y0};
+        return diagonal({source: o, target: o});
+      })
+    .transition()
+      .duration(duration)
+      .attr("d", diagonal);
+
+  // Transition links to their new position.
+  link.transition()
+      .duration(duration)
+      .attr("d", diagonal);
+
+  // Transition exiting nodes to the parent's new position.
+  link.exit().transition()
+      .duration(duration)
+      .attr("d", function(d) {
+        var o = {x: source.x, y: source.y};
+        return diagonal({source: o, target: o});
+      })
+      .remove();
+
+  // Stash the old positions for transition.
+  nodes.forEach(function(d) {
+    d.x0 = d.x;
+    d.y0 = d.y;
+  });
+  
+  function onMouseOver(d)
+	{
+		var message = "<p><strong>Name</strong>: " + d.name + ", " + d.file + ", " + d.coll + "</p>";
+		
+		
+		//document.getElementById("console").innerHTML = message;
+	}
+}
+
+// Toggle children.
+function toggle(d) {
+	
+	if ( !(d.children || d._children) )
+		return;
+		
+  if (d.children) {
+    d._children = d.children;
+    d.children = null;
+  } else {
+    d.children = d._children;
+    d._children = null;
+  }
+}
+})();
+}
+
+MainGraph(type);
+
+function reviewSavedState(coll, keywordItem, valueItem) {
+		$( "#body" ).empty();
+    $("#reviewstatebutton").popover("hide");
+	MainGraph(coll);
+}
+
+
+  </script>
+  </div>
+  <!-- Modal -->
+  <div class="tab-pane" id="keyword" style="height:100%;"> 
+	  	<button type="button" class="btn btn-default btn-lg" onclick="updateKeyword()">
+             Update
+        </button>
+        <button type="button" class="btn btn-default btn-lg" onclick="keywordSort()">
+             Sort
+        </button>
+        <button type="button" class="btn btn-default btn-lg" onclick="keywordByFile()">
+             By File
+        </button>
+        <button type="button" class="btn btn-default btn-lg" onclick="keywordRevert()">
+             Revert
+        </button>
+        <input type="text" name="searchKeyword" id="searchKeyword">&nbsp; Full Text Search
+        <button type="button" class="btn btn-default btn-small" onclick="keywordSearch()">Search</button>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+        <button type="button" class="btn btn-default btn-lg" id="keywordHelp" data-html="true" data-content="Left Click on node to view lower levels of graph<br>Right Click on node to use node and children.<br>Click Submit to execute search for Keywords" >Help</button>
+
+	    
+	    <div id="parentChart1" style="height:85%;width:100%;overflow:auto;margin-bottom:40px;margin-top:40px;">
+	    <div id="vertical-slider" style="float:left;"></div>
+        <div id="chart1" style="float:left;">
+			<svg>
+			</svg>
+        </div>
+        </div>
+        <nav class="navbar navbar-fixed-bottom" role="navigation">
+        <label for="minimum">Minimum: </label><input type="text" id="minimum" readonly style="border:0; color:#f6931f; font-weight:bold;">
+        <label for="maximum">Maximum: </label><input type="text" id="maximum" readonly style="border:0; color:#f6931f; font-weight:bold;">
+        <div id="slider-range" style="width:60%"></div>
+        </nav>
+
+  </div>
+  <div class="tab-pane" id="value" style="height:100%;"> 
+	  	    <button type="button" class="btn btn-default btn-lg" onclick="updateValue()">
+              Update
+            </button>
+            <button type="button" class="btn btn-default btn-lg" onclick="valueSort()">
+              Sort
+            </button>
+            <button type="button" class="btn btn-default btn-lg" onclick="valueByFile()">
+              Switch Graph
+            </button>
+            <button type="button" class="btn btn-default btn-lg" onclick="keywordRevert()">
+              Revert
+            </button>
+            <input type="text" name="searchValue" id="searchValue">&nbsp; Full Text Search
+            <button type="button" class="btn btn-default btn-small" onclick="valueSearch()">Search</button>
+         &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+        <button type="button" class="btn btn-default btn-lg" id="valueHelp" data-html="true" data-content="Left Click on node to view lower levels of graph<br>Right Click on node to use node and children.<br>Click Submit to execute search for Keywords" >Help</button>
+	    &nbsp;&nbsp;<label for="keywordDisplay">Keyword: </label><input type="text" id="keywordDisplay" readonly style="border:0; color:#f6931f; font-weight:bold;">
+	    <div id="parentChartValue" style="height:85%;width:100%;overflow:auto;margin-bottom:40px;margin-top:40px;">
+        <div id="vertical-slider-Value" style="float:left;"></div>
+        <div id="valueChart" style="float:left;">
+			<svg>
+			</svg>
+        </div>
+        </div>
+        <nav class="navbar navbar-fixed-bottom" role="navigation">
+          <label for="minimumValue">Minimum: </label><input type="text" id="minimumValue" readonly style="border:0; color:#f6931f; font-weight:bold;">
+          <label for="maximumValue">Maximum: </label><input type="text" id="maximumValue" readonly style="border:0; color:#f6931f; font-weight:bold;">
+          <div id="slider-range-Value" style="width:60%"></div>
+        </nav>
+
+    </div>
+   <div class="tab-pane" id="subset">
+	<button type="button" id="savestatebutton" data-html="true" class="btn btn-default btn-lg popover-children savestateform" data-target-selector="#savestateform">
+      Save State
+    </button>
+    <div class="hidden" id="savestateform"> 
+    <form onsubmit="saveState(this);" name="saveStateForm" method="POST" class="well form-inline"  action="javascript:void(0);">
+
+       <p>please indicate the name of the search to save.</p>
+       <p>Name:<input type="text" name="savestateinput" id="savestate"></p>
+       <p>	  	    
+		   <button type="submit" class="btn btn-default btn-sm">
+              Submit
+           </button>
+       </p>
+     </form>
+     </div>
+	<button type="button" id="loadstatebutton" data-html="true" class="btn btn-default btn-lg popover-children" data-toggle="popover" data-content="">
+      Load State
+    </button>
+    <div class="hidden" id="loadstatediv"> 
+       Hi
+     </div>
+    &nbsp;&nbsp;<label for="keywordDisplay1">Keyword: </label><input type="text" id="keywordDisplay1" readonly style="border:0; color:#f6931f; font-weight:bold;">
+    &nbsp;&nbsp;<label for="valueDisplay">Value: </label><input type="text" id="valueDisplay" readonly style="border:0; color:#f6931f; font-weight:bold;">
+    &nbsp;&nbsp;<label for="saveStatusDisplay">Save Name: </label><input type="text" id="saveStatusDisplay" readonly style="border:0; color:#f6931f; font-weight:bold;">
+    <div id="bodySubset" style="width:100%; height:100%;"></div>
+    <!--<div id="console"></div> -->
+   </div>
+   <div class="tab-pane" id="dataPoint" style="height:100%;">
+    <div id="bodyDataPoint" style="width:100%; height:100%;">
+        <object type="text/html" data="**URL to page**" id="dataPointObject"
+            style="width:100%; height:100%; margin:1%;">
+        </object>
+    
+    
+    </div>
+    <!--<div id="console"></div> -->
+   </div>
+     <script>
+    $(document).ready(function() {
+            $('#globalHelp').popover({
+                trigger: "hover",
+                placement: "bottom",
+                title: "Global View - Help",
+                container: 'body',
+                style: 'max-width:800px;'
+                });
+        });
+        $(document).ready(function() {
+            $('#keywordHelp').popover({
+                trigger: "hover",
+                placement: "bottom",
+                title: "Keyword View - Help",
+                container: 'body'
+                });
+        });
+         $(document).ready(function() {
+            $('#valueHelp').popover({
+                trigger: "hover",
+                placement: "bottom",
+                title: "Value View - Help",
+                container: 'body',
+                style: 'max-width:800px;'
+                });
+        });
+    $(document).ready(function() {    
+     $('#savestatebutton').popover({
+		 trigger:'click',
+		 title:'<span class="\text-info\"><strong>Save State</strong></span>'+
+                '<button type=\"button\" id=\"close\" class=\"close\" onclick=$(&quot;#savestatebutton&quot;).popover(&quot;hide&quot;);>&times;</button>',
+		 container:'body', 
+	     content: function() {
+		    return $(jQuery(this).data('target-selector')).html();
+	     }
+     });
+ });
+     $(document).ready(function() {    
+     $('#loadstatebutton').popover({
+		 trigger:'click',
+		 title:'<span class="\text-info\"><strong>Load State</strong></span>'+
+                '<button type=\"button\" id=\"close\" class=\"close\" onclick=$(&quot;#loadstatebutton&quot;).popover(&quot;hide&quot;);>&times;</button>',
+		 container:'body', 
+		 content: function() {
+			serviceUrl = "service/loadState"
+			var item = "<div>";
+			$.ajax({
+				url: serviceUrl,
+				data: {},
+				dataType: "json",
+				async:false,
+				success: function (response) {
+					function appendItems(element, index, array) {
+						console.log(element);
+						item += "<div class=\"row\"><div class=\"col-md-1\">" + element.name + "</div><div class=\"col-md-1 col-md-offset-2\"><button type=\"button\" class=\"btn btn-default btn-sm\" onclick=\"loadSavedState('" + element.collection + "','" + element.keyword + "','" + element.value + "')\">GO</button></div></div>"
+					}
+					response.result.forEach(appendItems);
+				}
+			})
+			item += "</div>";
+			return item
+			//return '<div id="popOverBox">BOOGIE</div>'
+		 }
+     });     
+});
+     $(document).ready(function() {    
+     $('#reviewstatebutton').popover({
+		 trigger:'click',
+		 title:'<span class="\text-info\"><strong>Load State</strong></span>'+
+                '<button type=\"button\" id=\"close\" class=\"close\" onclick=$(&quot;#reviewstatebutton&quot;).popover(&quot;hide&quot;);>&times;</button>',
+		 container:'body', 
+		 content: function() {
+			serviceUrl = "service/loadState"
+			var item = "<div>";
+			$.ajax({
+				url: serviceUrl,
+				data: {},
+				dataType: "json",
+				async:false,
+				success: function (response) {
+					function appendItems(element, index, array) {
+						console.log(element);
+						item += "<div class=\"row\"><div class=\"col-md-1\">" + element.name + "</div><div class=\"col-md-1 col-md-offset-2\"><button type=\"button\" class=\"btn btn-default btn-sm\" onclick=\"reviewSavedState('" + element.collection + "','" + element.keyword + "','" + element.value + "')\">GO</button></div></div>"
+					}
+					response.result.forEach(appendItems);
+				}
+			})
+			item += "</div>";
+			return item
+			//return '<div id="popOverBox">BOOGIE</div>'
+		 }
+     });     
+});
+  </script>
+    
+  </div>
+</div>
+
+  </body>
+</html>
